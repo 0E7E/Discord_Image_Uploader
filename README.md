@@ -1,0 +1,2 @@
+# Discord_Image_Uploader
+DiscordのチャンネルにUplaodされた画像をSupabase StorageにUploadするDiscord bot
