@@ -6,7 +6,9 @@ from PIL import Image
 import os
 from dotenv import load_dotenv
 import tempfile  
-from datetime import timezone
+from datetime import timezone, datetime
+from flask import Flask, jsonify
+import threading
 
 load_dotenv()
 
@@ -18,14 +20,31 @@ TARGET_CHANNEL_ID = int(os.getenv("TARGET_CHANNEL_ID"))
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Discrod 設定
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
+# 定数
 TARGET_SIZE = (1920, 1080)
 BACKGROUND_COLOR = (255, 255, 255)
 
+# Flask設定
+app = Flask(__name__)
 
+# 状態変数
+START_TIME = datetime.now(timezone.utc)
+UPLOAD_COUNT = 0
+
+# Flask root
+@app.route('/')
+def index():
+    return jsonify({
+        "start_time": START_TIME.isoformat(),
+        "upload_count": UPLOAD_COUNT
+    })
+
+# Discordイベント
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
@@ -82,7 +101,17 @@ async def on_message(message):
             print(f"❌ アップロード失敗: {res.error}")
         else:
             print(f"✅ Supabase にアップロード成功: {res.full_path}")
+            UPLOAD_COUNT +=1
 
         image_index += 1
 
-client.run(DISCORD_TOKEN)
+def run_flask():
+    app.run(host="0.0.0.0", port=10000)
+
+def run_discord():
+    client.run(DISCORD_TOKEN)
+
+if __name__ == "__main__":
+    threading.Thread(target=run_discord, daemon=True).start()
+    run_flask()
+
