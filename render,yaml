@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: discord-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        sync: false
+      - key: TARGET_CHANNEL_ID
+        sync: false
+    autoDeploy: true
