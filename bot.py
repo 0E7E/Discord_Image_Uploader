@@ -22,6 +22,10 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
+TARGET_SIZE = (1920, 1080)
+BACKGROUND_COLOR = (255, 255, 255)
+
+
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
@@ -49,9 +53,9 @@ async def on_message(message):
         # 画像リサイズ＋白背景
         original = Image.open(BytesIO(response.content))
         original.thumbnail((1920, 1080))
-        resized = Image.new("RGB", (1920, 1080), (255, 255, 255))
-        x = (1920 - original.width) // 2
-        y = (1080 - original.height) // 2
+        resized = Image.new("RGB", TARGET_SIZE, BACKGROUND_COLOR)
+        x = (TARGET_SIZE[0] - original.width) // 2
+        y = (TARGET_SIZE[1] - original.height) // 2
         resized.paste(original, (x, y))
 
         # 一時ファイルに保存（Supabaseはパスで必要）
