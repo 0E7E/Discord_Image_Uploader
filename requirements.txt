@@ -1,5 +1,6 @@
 discord.py
 requests
 supabase
-python-dotenv
 Pillow
+python-dotenv
+Flask
