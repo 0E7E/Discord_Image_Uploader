@@ -51,6 +51,8 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    global UPLOAD_COUNT
+
     if message.channel.id != TARGET_CHANNEL_ID:
         return
     if message.author.bot or not message.attachments:
