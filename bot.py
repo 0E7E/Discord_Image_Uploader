@@ -9,6 +9,9 @@ import tempfile
 from datetime import timezone, datetime
 from flask import Flask, jsonify
 import threading
+import logging
+
+logging.basicConfig(level=logging.INFO,format="[%(asctime)s] %(levelname)s: %(message)s",datefmt="%Y-%m-%d %H:%M:%S")
 
 load_dotenv()
 
@@ -47,7 +50,7 @@ def index():
 # Discordイベント
 @client.event
 async def on_ready():
-    print(f"✅ Logged in as {client.user}")
+    logging.info(f"✅ Logged in as {client.user}")
 
 @client.event
 async def on_message(message):
@@ -64,11 +67,11 @@ async def on_message(message):
         if not attachment.content_type or not attachment.content_type.startswith("image/"):
             continue
 
-        print(f"📸 {attachment.filename} を取得中...")
+        logging.info(f"📸 {attachment.filename} を取得中...")
 
         response = requests.get(attachment.url)
         if response.status_code != 200:
-            print("❌ ダウンロード失敗")
+            logging.info("❌ ダウンロード失敗")
             return
 
         # 画像リサイズ＋白背景
@@ -100,9 +103,10 @@ async def on_message(message):
         os.remove(tmp_path)  # 一時ファイル削除
 
         if hasattr(res, "error") and res.error is not None:
-            print(f"❌ アップロード失敗: {res.error}")
+            logging.info(f"❌ アップロード失敗: {res.error}")
         else:
-            print(f"✅ Supabase にアップロード成功: {res.full_path}")
+            logging.info(f"✅ Supabase にアップロード成功: {res.full_path}")
+            await message.channel.send(f"✅ アップロード完了！: `{file_path}`")
             UPLOAD_COUNT +=1
 
         image_index += 1
