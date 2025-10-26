@@ -4,3 +4,4 @@ supabase
 Pillow
 python-dotenv
 Flask
+logging
