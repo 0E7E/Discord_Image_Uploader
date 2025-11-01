@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 import tempfile  
 from datetime import timezone, datetime
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_file, request
 import threading
 import logging
 
@@ -47,6 +47,64 @@ def index():
         "upload_count": UPLOAD_COUNT
     })
 
+@app.route("/api/image")
+def get_image():
+    """?id=1 のようにアクセスして画像を取得"""
+    try:
+        id_str = request.args.get("id")
+        if not id_str or not id_str.isdigit() or int(id_str) < 1:
+            return jsonify({"error": "Invalid ?id parameter"}), 400
+
+        image_id = int(id_str)
+
+        # Supabaseのファイル一覧を取得
+        files_resp = supabase.storage.from_(SUPABASE_BUCKET).list()
+        files = files_resp if isinstance(files_resp, list) else files_resp.get("data", [])
+        if not files:
+            return jsonify({"error": "No files found in bucket"}), 404
+
+        # 画像のみ抽出・日付順に並べ替え
+        valid_ext = ["jpg", "jpeg", "png", "webp", "gif"]
+        sorted_files = sorted(
+            [f for f in files if f["name"].split(".")[-1].lower() in valid_ext],
+            key=lambda x: x.get("updated_at", ""),
+            reverse=True
+        )
+
+        if not sorted_files:
+            return jsonify({"error": "No valid image files found"}), 404
+
+        index = (image_id - 1) % len(sorted_files)
+        target = sorted_files[index]
+
+        # ダウンロード
+        file_data = supabase.storage.from_(SUPABASE_BUCKET).download(target["name"])
+        if not file_data:
+            return jsonify({"error": "Failed to download file"}), 404
+
+        # リサイズ
+        img = Image.open(BytesIO(file_data))
+        img.thumbnail(TARGET_SIZE)
+        resized = Image.new("RGB", TARGET_SIZE, BACKGROUND_COLOR)
+        x = (TARGET_SIZE[0] - img.width) // 2
+        y = (TARGET_SIZE[1] - img.height) // 2
+        resized.paste(img, (x, y))
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        resized.save(tmp, format="JPEG")
+        tmp.seek(0)
+
+        return send_file(
+            tmp.name,
+            mimetype="image/jpeg",
+            as_attachment=False,
+            download_name=target["name"]
+        )
+    except Exception as e:
+        logging.exception("❌ Error in /image")
+        return jsonify({"error": str(e)}), 500
+
+
 # Discordイベント
 @client.event
 async def on_ready():
@@ -76,7 +134,7 @@ async def on_message(message):
 
         # 画像リサイズ＋白背景
         original = Image.open(BytesIO(response.content))
-        original.thumbnail((1920, 1080))
+        original.thumbnail(TARGET_SIZE)
         resized = Image.new("RGB", TARGET_SIZE, BACKGROUND_COLOR)
         x = (TARGET_SIZE[0] - original.width) // 2
         y = (TARGET_SIZE[1] - original.height) // 2
